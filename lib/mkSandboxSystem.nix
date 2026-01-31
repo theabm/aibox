@@ -110,6 +110,7 @@
                     tag = "workspace";
                     source = projectDir;
                     mountPoint = "/workspace";
+                    readOnly = false;
                   }
                 ];
 
