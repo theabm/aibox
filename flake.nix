@@ -3,20 +3,17 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-    microvm.url = "github:microvm-nix/microvm.nix";
-    microvm.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, microvm, ... }:
+  outputs = { self, nixpkgs, ... }:
     {
       lib.mkSandboxSystem = import ./lib/mkSandboxSystem.nix {
-        inherit nixpkgs microvm;
+        inherit nixpkgs;
       };
 
       templates.project = {
         path = ./templates/project;
-        description = "MicroVM agent sandbox project template";
+        description = "NixOS VM agent sandbox project template";
       };
     };
 }
-

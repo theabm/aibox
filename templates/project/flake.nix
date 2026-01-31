@@ -4,7 +4,6 @@
   inputs = {
     aibox.url = "github:theabm/aibox";
     nixpkgs.follows = "aibox/nixpkgs";
-    microvm.follows = "aibox/microvm";
   };
 
   outputs = { self, aibox, nixpkgs, ... }:
@@ -80,7 +79,8 @@
       };
 
       # get the vm runner
-      runner = vm.config.microvm.declaredRunner;
+      runner = vm.config.system.build.vm;
+      runScript = "${runner}/bin/run-${hostname}-vm";
 
       # utility function to an app
       mkApp = name: text: {
@@ -100,7 +100,7 @@
         # `nix run .#aibox` -> build (if not already built) and start the VM (need to keep terminal running!)
         aibox = {
           type = "app";
-          program = "${runner}/bin/microvm-run";
+          program = runScript;
         };
         # `nix run . ` will default to `nix run .#sanbox`
         default = self.apps.${system}.aibox;
@@ -122,7 +122,7 @@
             --property=TimeoutStopSec=10 \
             --property=StandardOutput=journal \
             --property=StandardError=journal \
-            ${runner}/bin/microvm-run
+            ${runScript}
 
           echo "Started: ${unit}"
           echo "Logs:    journalctl --user -u ${unit} -f"
@@ -174,4 +174,3 @@
       };
     };
 }
-
