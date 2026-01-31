@@ -1,6 +1,6 @@
-{nixpkgs, microvm, ... }:
+{nixpkgs, ... }:
     let
-      # Function that builds a microVM NixOS system for a given project + package list.
+      # Function that builds a NixOS VM system for a given project + package list.
       mkSandboxSystem =
         { system
         , projectDir
@@ -14,8 +14,8 @@
         nixpkgs.lib.nixosSystem {
           inherit system;
           modules = [
-            microvm.nixosModules.microvm
             ({ pkgs, ... }: {
+              system.name = hostname;
               system.stateVersion = "25.11";
               networking.hostName = hostname;
               nixpkgs.config.allowUnfree = true;
@@ -48,7 +48,7 @@
                 openFirewall = true;
               };
 
-              # Networking: bring up the microVM NIC via DHCP
+              # Networking: bring up the VM NIC via DHCP
               networking.useNetworkd = true;
               systemd.network.enable = true;
               systemd.network.networks."10-ethernet" = {
@@ -87,37 +87,21 @@
               };
 
               # VM settings
-              microvm = {
-                hypervisor = "qemu";
-
-                interfaces = [
-                  {
-                    type = "user";
-                    id = "usernet";
-                    mac = "02:00:00:00:00:01";
-                  }
-                ];
+              virtualisation = {
+                memorySize = mem;
+                cores = vcpu;
 
                 forwardPorts = [
                   { from = "host"; host.port = hostPort; guest.port = 22; }
                 ];
 
-                inherit vcpu mem;
-
                 # mount project src dir into /workspace
-                shares = [
-                  {
-                    proto = "9p";
-                    tag = "workspace";
+                sharedDirectories = {
+                  workspace = {
                     source = projectDir;
-                    mountPoint = "/workspace";
-                    readOnly = false;
-                  }
-                ];
-
-                # no persistent volumes! Be sure to manually copy any files you need 
-                # through SSH or creating something here. 
-                volumes = [ ];
+                    target = "/workspace";
+                  };
+                };
               };
             })
           ];
