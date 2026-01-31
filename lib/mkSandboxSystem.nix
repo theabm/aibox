@@ -17,6 +17,7 @@
             ({ pkgs, ... }: {
               system.stateVersion = "25.11";
               networking.hostName = "agent-aibox";
+              nixpkgs.config.allowUnfree = true;
 
               # list any "basic" utilities here
               environment.systemPackages =

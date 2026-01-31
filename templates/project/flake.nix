@@ -13,7 +13,11 @@ rec {
       # your host publich ssh key
       authorizedKeys = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO4i3B/ShuuG5zvddLbazGYNEfat3C8TF7d5ixARpHUb andres@dede"];
 
-      pkgs = nixpkgs.legacyPackages.${system};
+      pkgs = import nixpkgs {
+         inherit system;
+         config.allowUnfree = true;
+      };
+
       lib = nixpkgs.lib;
 
       # --- Deterministic ID derived from project identifier ---
