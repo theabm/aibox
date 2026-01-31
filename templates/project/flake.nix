@@ -1,4 +1,4 @@
-rec {
+{
   description = "MyProjectName"; # <-- make sure to change this! The port and systemd service are set by hashing this name
 
   inputs = {
@@ -21,7 +21,7 @@ rec {
       lib = nixpkgs.lib;
 
       # --- Deterministic ID derived from project identifier ---
-      projectId = description; # keep stable per project
+      projectId = toString ./.; # keep stable per project
 
       # modulo function (lacking in Nix)
       mod = a: b: a - (b * (a / b));
@@ -56,6 +56,7 @@ rec {
       # Unit name: stable + short, avoids collisions
       unitSuffix = builtins.substring 0 10 h;
       unit = "agent-aibox-${unitSuffix}";
+      hostname = unit;
 
       # Port range: pick a safe unprivileged block unlikely to collide
       # 20000–39999
@@ -64,7 +65,7 @@ rec {
 
       # build VM from base + extra packages
       vm = aibox.lib.mkSandboxSystem {
-        inherit system hostPort authorizedKeys;
+        inherit system hostPort authorizedKeys hostname;
         projectDir = toString ./.;
 
         # per project packages go here!

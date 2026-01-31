@@ -5,6 +5,7 @@
         { system
         , projectDir
         , authorizedKeys 
+        , hostname ? "agent-aibox"
         , packages ? []
         , hostPort ? 2222
         , vcpu ? 4
@@ -16,7 +17,7 @@
             microvm.nixosModules.microvm
             ({ pkgs, ... }: {
               system.stateVersion = "25.11";
-              networking.hostName = "agent-aibox";
+              networking.hostName = hostname;
               nixpkgs.config.allowUnfree = true;
 
               # list any "basic" utilities here
