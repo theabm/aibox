@@ -1,5 +1,5 @@
 rec {
-  description = "MyProjectName"; # <-- make sure to change this! This sets ssh port for IDEs
+  description = "MyProjectName"; # <-- make sure to change this! The port and systemd service are set by hashing this name
 
   inputs = {
     aibox.url = "github:theabm/aibox";
@@ -10,6 +10,7 @@ rec {
   outputs = { self, aibox, nixpkgs, ... }:
     let
       system = "x86_64-linux";
+      # your host publich ssh key
       authorizedKeys = ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO4i3B/ShuuG5zvddLbazGYNEfat3C8TF7d5ixARpHUb andres@dede"];
 
       pkgs = nixpkgs.legacyPackages.${system};
@@ -18,6 +19,7 @@ rec {
       # --- Deterministic ID derived from project identifier ---
       projectId = description; # keep stable per project
 
+      # modulo function (lacking in Nix)
       mod = a: b: a - (b * (a / b));
 
       # Convert hex string -> int (so we can map a hash to a port)
@@ -49,47 +51,58 @@ rec {
 
       # Unit name: stable + short, avoids collisions
       unitSuffix = builtins.substring 0 10 h;
-      unit = "agent-sandbox-${unitSuffix}";
+      unit = "agent-aibox-${unitSuffix}";
 
       # Port range: pick a safe unprivileged block unlikely to collide
       # 20000–39999
       portSeed = hexToInt (builtins.substring 0 4 h); # 16 bits
       hostPort = 20000 + (mod portSeed  20000);
 
+      # build VM from base + extra packages
       vm = aibox.lib.mkSandboxSystem {
         inherit system hostPort authorizedKeys;
         projectDir = toString ./.;
 
+        # per project packages go here!
         packages = with pkgs; [
-          tree
-          just
           gcc
-          rustup
           uv
+
+          # AI 
+          claude-code
+          codex
         ];
       };
 
+      # get the vm runner
       runner = vm.config.microvm.declaredRunner;
 
+      # utility function to an app
       mkApp = name: text: {
         type = "app";
         program = "${pkgs.writeShellScript name text}";
       };
     in
     {
+      # consumed by nix build (default means `nix build .` evaluates `nix build aibox`)
       packages.${system} = {
-        sandbox = runner;
+        aibox = runner;
         default = runner;
       };
 
+      # utility cli functions 
       apps.${system} = {
-        sandbox = {
+        # `nix run .#aibox` -> build (if not already built) and start the VM (need to keep terminal running!)
+        aibox = {
           type = "app";
           program = "${runner}/bin/microvm-run";
         };
-        default = self.apps.${system}.sandbox;
+        # `nix run . ` will default to `nix run .#sanbox`
+        default = self.apps.${system}.aibox;
 
-        sandbox-daemon = mkApp "sandbox-daemon" ''
+        # `nix run .#sanbox-daemon`
+        # (recommended) command to build + start the VM as a background systemd service 
+        aibox-daemon = mkApp "aibox-daemon" ''
           set -euo pipefail
 
           # Stop any existing instance of this project's unit
@@ -112,37 +125,43 @@ rec {
           echo "SSH:     ssh -p ${toString hostPort} dev@localhost"
         '';
 
-        sandbox-stop = mkApp "sandbox-stop" ''
+        # `nix run .#aibox-stop` -> stop the VM
+        aibox-stop = mkApp "aibox-stop" ''
           set -euo pipefail
           systemctl --user stop "${unit}"
           echo "Stopped: ${unit}"
         '';
 
-        sandbox-status = mkApp "sandbox-status" ''
+        # `nix run .#aibox-status` -> stop the VM
+        aibox-status = mkApp "aibox-status" ''
           set -euo pipefail
           systemctl --user status "${unit}" --no-pager || true
         '';
 
-        sandbox-logs = mkApp "sandbox-logs" ''
+        # `nix run .#aibox-logs` -> logs of the VM
+        aibox-logs = mkApp "aibox-logs" ''
           set -euo pipefail
           journalctl --user -u "${unit}" -f
         '';
 
-        sandbox-ssh = mkApp "sandbox-ssh" ''
+        # `nix run .#aibox-ssh` -> ssh into the VM (useful to not have to manually set port)
+        aibox-ssh = mkApp "aibox-ssh" ''
           set -euo pipefail
 
           port=${toString hostPort}
           host=localhost
           user=dev
 
-          echo "Connecting to sandbox:"
+          echo "Connecting to aibox:"
           echo "  ssh -p $port $user@$host"
           echo
 
+          echo "Running custom SSH command for kitty users ... Change to normal SSH if not using kitty!"
           exec env TERM=xterm-256color ssh -p "$port" dev@localhost
         '';
 
-        sandbox-port = mkApp "sandbox-port" ''
+        # `nix run .#aibox-port` -> print the port where the VM is listening
+        aibox-port = mkApp "aibox-port" ''
           set -euo pipefail
           echo ${toString hostPort}
         '';
