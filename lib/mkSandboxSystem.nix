@@ -16,7 +16,7 @@
             microvm.nixosModules.microvm
             ({ pkgs, ... }: {
               system.stateVersion = "25.11";
-              networking.hostName = "agent-sandbox";
+              networking.hostName = "agent-aibox";
 
               # list any "basic" utilities here
               environment.systemPackages =
