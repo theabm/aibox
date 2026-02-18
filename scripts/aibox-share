@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# checked : looks good
+
+readonly AIBOX_HOME="$HOME/.aibox"
+readonly AIBOX_SHARE="$AIBOX_HOME/share"
+readonly AIBOX_SHARES="$AIBOX_HOME/shares.txt"
+
+mkdir -p "$AIBOX_HOME" "$AIBOX_SHARE"
+touch "$AIBOX_SHARES"
+
+share_root="$(realpath -m "$AIBOX_SHARE")"
+
+usage() {
+  echo "Usage: aibox-share {add|remove|toggle|sync|clear|list} /path" >&2
+}
+
+
+#### Add Share
+mount_share() {
+  local src="$1"
+  local target="$AIBOX_SHARE$src"
+  mkdir -p "$target"
+  if mountpoint -q "$target"; then
+    return 0
+  fi
+  bindfs "$src" "$target"
+}
+
+add_share() {
+  if [ "$#" -ne 1 ]; then
+    usage
+    exit 2
+  fi
+  local src="$1"
+  if [ ! -e "$src" ]; then
+    echo "Not found: $src" >&2
+    exit 2
+  fi
+  src="$(realpath "$src")"
+  if [ -f "$src" ]; then
+    src="$(dirname "$src")"
+  fi
+  if [ ! -d "$src" ]; then
+    echo "Not a directory: $src" >&2
+    exit 2
+  fi
+  case "$src" in
+    "$share_root"|"$share_root"/*)
+      echo "Refusing to share inside $AIBOX_SHARE" >&2
+      exit 2
+      ;;
+  esac
+  if ! grep -Fxq "$src" "$AIBOX_SHARES"; then
+    echo "$src" >> "$AIBOX_SHARES"
+  fi
+  mount_share "$src"
+}
+####
+
+#### Remove share
+unmount_target() {
+  local target="$1"
+  if mountpoint -q "$target"; then
+    if command -v fusermount3 >/dev/null 2>&1; then
+      fusermount3 -u "$target"
+    elif command -v fusermount >/dev/null 2>&1; then
+      fusermount -u "$target"
+    else
+      umount "$target"
+    fi
+  fi
+}
+remove_share() {
+  if [ "$#" -ne 1 ]; then
+    usage
+    exit 2
+  fi
+  local src="$1"
+  if [ -e "$src" ]; then
+    src="$(realpath "$src")"
+    if [ -f "$src" ]; then
+      src="$(dirname "$src")"
+    fi
+  fi
+  if ! grep -Fxq "$src" "$AIBOX_SHARES"; then
+    echo "Not shared: $src" >&2
+    return 0
+  fi
+  local target="$AIBOX_SHARE$src"
+  unmount_target "$target"
+  local tmp
+  tmp="$(mktemp)"
+  # -F fixed str, -x whole line (no regex), -v invert match
+  grep -Fxv "$src" "$AIBOX_SHARES" > "$tmp" || true
+  mv "$tmp" "$AIBOX_SHARES"
+}
+####
+
+
+#### Toggle share
+toggle_share() {
+  if [ "$#" -ne 1 ]; then
+    usage
+    exit 2
+  fi
+  local path="$1"
+  if [ -z "$path" ] || [ ! -e "$path" ]; then
+    return 0
+  fi
+  path="$(realpath -m "$path")"
+  case "$path" in
+    "$share_root"|"$share_root"/*)
+      # rel -> rel path wrt share root
+      local rel
+      rel="${path#${share_root}}"
+      rel="${rel#/}"
+      if [ -z "$rel" ]; then
+        return 0
+      fi
+      local orig="/$rel"
+
+      local best=""
+      while IFS= read -r line || [ -n "$line" ]; do
+        [ -z "$line" ] && continue
+        case "$orig" in
+          "$line"|"$line"/*)
+            if [ ${#line} -gt ${#best} ]; then
+              best="$line"
+            fi
+            ;;
+        esac
+      done < "$AIBOX_SHARES"
+      if [ -n "$best" ]; then
+        remove_share "$best"
+      fi
+      ;;
+    *)
+      add_share "$path"
+      ;;
+  esac
+}
+
+sync_shares() {
+  while IFS= read -r line || [ -n "$line" ]; do
+    [ -z "$line" ] && continue
+    if [ -d "$line" ]; then
+      mount_share "$line"
+    fi
+  done < "$AIBOX_SHARES"
+}
+
+clear_shares() {
+  if [ -f "$AIBOX_SHARES" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+      [ -z "$line" ] && continue
+      local target="$AIBOX_SHARE$line"
+      unmount_target "$target"
+    done < "$AIBOX_SHARES"
+    : > "$AIBOX_SHARES"
+  fi
+}
+
+list_shares() {
+  cat "$AIBOX_SHARES"
+}
+
+cmd="${1:-}"
+shift || true
+case "$cmd" in
+  add)
+    add_share "$@"
+    ;;
+  remove|rm|del)
+    remove_share "$@"
+    ;;
+  toggle)
+    toggle_share "$@"
+    ;;
+  sync)
+    sync_shares
+    ;;
+  clear)
+    clear_shares
+    ;;
+  list)
+    list_shares
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+esac

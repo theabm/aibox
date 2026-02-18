@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# looks good
+
+readonly AIBOX_HOME="$HOME/.aibox"
+readonly AIBOX_SHARE="$AIBOX_HOME/share"
+readonly AIBOX_VIEW="$AIBOX_HOME/view"
+readonly AIBOX_YAZI="$AIBOX_HOME/yazi"
+
+mkdir -p "$AIBOX_HOME" "$AIBOX_SHARE" "$AIBOX_YAZI"
+if [ ! -f "$AIBOX_VIEW" ]; then
+  echo "shares" > "$AIBOX_VIEW"
+fi
+
+cat > "$AIBOX_YAZI/keymap.toml" <<'KEYMAP'
+[mgr]
+prepend_keymap = [
+  { on = "<Space>", run = "shell -- aibox-share toggle %h", desc = "Toggle share" },
+  { on = "<Tab>", run = [ "shell -- aibox-panel-toggle", "quit --code=42" ], desc = "Toggle panel" },
+]
+KEYMAP
+
+export YAZI_CONFIG_HOME="$AIBOX_YAZI"
+
+while true; do
+  view="shares"
+  if [ -f "$AIBOX_VIEW" ]; then
+    view="$(cat "$AIBOX_VIEW")"
+  fi
+
+  if [ "$view" = "home" ]; then
+    dir="$HOME"
+  else
+    dir="$AIBOX_SHARE"
+  fi
+
+  rc=0
+  yazi "$dir" || rc=$?
+
+  if [ "$rc" -eq 42 ]; then
+    continue
+  fi
+
+  exit 0
+done
+

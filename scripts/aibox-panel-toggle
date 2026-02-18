@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# looks good
+
+readonly AIBOX_HOME="$HOME/.aibox"
+readonly AIBOX_VIEW="$AIBOX_HOME/view"
+
+mkdir -p "$AIBOX_HOME"
+
+current="${1:-}"
+if [ -z "$current" ] && [ -f "$AIBOX_VIEW" ]; then
+  current="$(cat "$AIBOX_VIEW")"
+fi
+
+if [ "$current" = "home" ]; then
+  echo "shares" > "$AIBOX_VIEW"
+else
+  echo "home" > "$AIBOX_VIEW"
+fi

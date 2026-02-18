@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# looks good
+
+readonly AIBOX_HOME="$HOME/.aibox"
+readonly AIBOX_SHARE="$AIBOX_HOME/share"
+readonly AIBOX_SHARES="$AIBOX_HOME/shares.txt"
+readonly AIBOX_VIEW="$AIBOX_HOME/view"
+readonly AIBOX_SESSION="aibox"
+readonly AIBOX_PORT="2222"
+
+mkdir -p "$AIBOX_HOME" "$AIBOX_SHARE"
+touch "$AIBOX_SHARES"
+if [ ! -f "$AIBOX_VIEW" ]; then
+  echo "shares" > "$AIBOX_VIEW"
+fi
+
+export AIBOX_PORT
+
+aibox-share sync
+
+tmux_socket="$AIBOX_HOME/tmux.sock"
+
+tmux_cmd() {
+  tmux -S "$tmux_socket" "$@"
+}
+
+if tmux_cmd has-session -t "$AIBOX_SESSION" 2>/dev/null; then
+  exec tmux -S "$tmux_socket" attach -t "$AIBOX_SESSION"
+fi
+
+tmux_cmd new-session -d -s "$AIBOX_SESSION" -n main "aibox-header"
+tmux_cmd split-window -v -p 75 -t "$AIBOX_SESSION":0 "aibox-browser"
+tmux_cmd select-pane -t "$AIBOX_SESSION":0.1
+exec tmux -S "$tmux_socket" attach -t "$AIBOX_SESSION"
