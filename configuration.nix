@@ -15,9 +15,14 @@
     jq
     tmux
     neovim
+    lazygit
 
     # AI 
     codex
+
+    # python
+    uv
+    ruff
   ]);
 
 

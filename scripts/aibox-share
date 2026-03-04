@@ -113,7 +113,7 @@ toggle_share() {
     "$share_root"|"$share_root"/*)
       # rel -> rel path wrt share root
       local rel
-      rel="${path#${share_root}}"
+      rel="${path#"${share_root}"}"
       rel="${rel#/}"
       if [ -z "$rel" ]; then
         return 0

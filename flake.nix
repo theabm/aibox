@@ -60,7 +60,7 @@
     packages.${system} = {
       default = pkgs.writeShellScriptBin "run" ''
         set -euxo pipefail
-        # exec ${vmExe}
+        exec ${vmExe}
       '';
       aibox = aiboxUi;
       aibox-share = aiboxShare;

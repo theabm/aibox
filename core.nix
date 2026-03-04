@@ -48,7 +48,6 @@ in
     interactiveShellInit = "cd /workspace";
   };
 
-
   services.openssh = {
     enable = true;
     settings = {
