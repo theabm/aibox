@@ -19,10 +19,19 @@
 
     # AI 
     codex
+    claude-code
 
     # python
     uv
     ruff
+
+    jetbrains.pycharm
+    opencode
+    code-cursor
+    vscode
+
+    
+
   ]);
 
 

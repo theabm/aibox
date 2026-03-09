@@ -7,8 +7,9 @@ in
   # https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/virtualisation/qemu-vm.nix
   virtualisation.vmVariant.virtualisation = {
     graphics = false;
-    memorySize = 1024 * 4;
+    memorySize = 1024 * 16;
     cores = 4;
+    diskSize = 1024 * 20; # 20 GiB
     diskImage = "$HOME/.aibox/vm.qcow2";
     forwardPorts = [
       {
@@ -47,6 +48,7 @@ in
     enable = true;
     interactiveShellInit = "cd /workspace";
   };
+  programs.nix-ld.enable = true;
 
   services.openssh = {
     enable = true;
