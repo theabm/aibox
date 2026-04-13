@@ -30,7 +30,8 @@
     code-cursor
     vscode
 
-    
+    # nodejs for mcp 
+    nodejs
 
   ]);
 

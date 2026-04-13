@@ -6,10 +6,13 @@ in
 {config, ... }: {
   # https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/virtualisation/qemu-vm.nix
   virtualisation.vmVariant.virtualisation = {
+    mountHostNixStore = true;
+    writableStore = true;
+    writableStoreUseTmpfs = false;
     graphics = false;
     memorySize = 1024 * 16;
     cores = 4;
-    diskSize = 1024 * 20; # 20 GiB
+    diskSize = 1024 * 60; # 20 GiB
     diskImage = "$HOME/.aibox/vm.qcow2";
     forwardPorts = [
       {
@@ -66,6 +69,7 @@ in
     matchConfig.Name = "en* eth*";
     networkConfig.DHCP = "yes";
   };
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
 
 
